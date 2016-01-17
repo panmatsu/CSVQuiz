@@ -8,6 +8,7 @@ import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -86,6 +87,7 @@ public class QuizActivity extends Activity {
             for(int i = 0; i < 7; i++){
                 QuizText[i] = reader.readNext();
             }
+            Log.d("TAG",QuizText[0][0]);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -101,7 +103,6 @@ public class QuizActivity extends Activity {
     }
 
     private void setStage() {
-
         //Questionの並び順をシャッフル
         Collections.shuffle(Stage);
     }
@@ -123,6 +124,10 @@ public class QuizActivity extends Activity {
 
         //選択肢の並びをシャッフル
         Collections.shuffle(Choice);
+
+        Log.d("TAG", questionTitle);
+        questionTitle = questionTitle.replace("\n","\n");
+        Log.d("TAG",questionTitle);
 
         //テキストに問題文と質問を配置
         TextView TextQuestion = (TextView) findViewById(R.id.textQuestion);
