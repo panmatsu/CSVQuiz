@@ -87,8 +87,7 @@ public class QuizActivity extends Activity {
             for(int i = 0; i < 7; i++){
                 QuizText[i] = reader.readNext();
             }
-            Log.d("TAG",QuizText[0][0]);
-        } catch (IOException e) {
+        } catch (IOException e) {  //例外処理
             e.printStackTrace();
         }
 
@@ -124,10 +123,8 @@ public class QuizActivity extends Activity {
 
         //選択肢の並びをシャッフル
         Collections.shuffle(Choice);
-
-        Log.d("TAG", questionTitle);
-        questionTitle = questionTitle.replace("\n","\n");
-        Log.d("TAG",questionTitle);
+        //改行を追加
+        questionTitle = questionTitle.replaceAll("の","\n\nの");
 
         //テキストに問題文と質問を配置
         TextView TextQuestion = (TextView) findViewById(R.id.textQuestion);
