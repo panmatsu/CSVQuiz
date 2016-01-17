@@ -2,7 +2,6 @@ package com.matsu.quizgamecsv;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.AssetManager;
@@ -16,14 +15,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-import java.io.BufferedReader;
+import com.opencsv.CSVReader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Arrays;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.StringTokenizer;
 
 public class QuizActivity extends Activity {
 
@@ -31,7 +31,7 @@ public class QuizActivity extends Activity {
     int score;        //点数
     int cntStage = 0; //通しでの並び番号
     //Questionの並び順
-    String[] Stage= {"0","1","2","3","4","5","6"};
+    List<Integer> Stage = new ArrayList<Integer>();
     //選択肢Buttonの取得
     Button[] btChoice = new Button[4];
     //CountDownの宣言
@@ -49,6 +49,11 @@ public class QuizActivity extends Activity {
         //CountDownTextの取得
         timer = (TextView)findViewById(R.id.textTimer);
 
+        //ListにQuestionの並び順を代入
+        for(int i = 0; i < 7; i++){
+            Stage.add(i);
+        }
+
         //選択肢Buttonの取得
         btChoice[0] = (Button)findViewById(R.id.bt1);
         btChoice[1] = (Button)findViewById(R.id.bt2);
@@ -60,12 +65,33 @@ public class QuizActivity extends Activity {
     @Override
     protected void onResume(){
         super.onResume();
-        //CSV読み込み
-        Context context = getApplicationContext();
-        parse(context);
 
-        //初期値30000ミリ秒(=30秒)
-        cdt = new MyCountDownTimer(30000, 1000);
+        CSVReader reader;   //CSVReaderの宣言
+        AssetManager as = getResources().getAssets();  //AssetManagerの取得
+        InputStream is = null;
+
+        try{   //ファイルを開く
+            is = as.open("quiz.csv");
+        }catch (IOException e){  //例外処理
+            e.printStackTrace();
+        }
+        InputStreamReader ireader = null;
+        try{ //文字コード"SJIS"で渡す
+            ireader = new InputStreamReader(is,"SJIS");
+        }catch (UnsupportedEncodingException e){  //例外処理
+            e.printStackTrace();
+        }
+        reader = new CSVReader(ireader,',','"',0);
+        try {  //QuizTextにCSVからのデータを入れる
+            for(int i = 0; i < 7; i++){
+                QuizText[i] = reader.readNext();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //初期値32000ミリ秒(=32秒)(微妙に遅れて始まるので30+2)
+        cdt = new MyCountDownTimer(32000, 1000);
         //問題文のシャッフル
         setStage();
         //選択肢のセット
@@ -75,15 +101,9 @@ public class QuizActivity extends Activity {
     }
 
     private void setStage() {
-        /**
-         *  Stage配列のシャッフル
-         */
-        //配列からListへ変換
-        List<String> list = Arrays.asList(Stage);
-        //リストの並びをシャッフル
-        Collections.shuffle(list);
-        //Listから配列へ変換
-        Stage = (String[])list.toArray(new String[list.size()]);
+
+        //Questionの並び順をシャッフル
+        Collections.shuffle(Stage);
     }
 
     private void setQuestion() {
@@ -93,32 +113,23 @@ public class QuizActivity extends Activity {
         quizBar.setText("クイズNo." + Integer.toString(cntStage + 1));
 
         //問題選択肢の配列
-        String[] Choice= new String[4];
+        List<String> Choice = new ArrayList<String>();
         //Databaseから取得したデータを変数にセット
-        String questionTitle =QuizText[Integer.parseInt(Stage[cntStage])][0];//問題文
-        Choice[0] =QuizText[Integer.parseInt(Stage[cntStage])][1];      //選択肢
-        Choice[1] =QuizText[Integer.parseInt(Stage[cntStage])][2];
-        Choice[2] =QuizText[Integer.parseInt(Stage[cntStage])][3];
-        Choice[3] =QuizText[Integer.parseInt(Stage[cntStage])][4];
-        Answer = Choice[0];       //答え
+        String questionTitle =QuizText[Stage.get(cntStage)][0];//問題文
+        for(int i = 0; i < 4; i++) {
+            Choice.add(QuizText[Stage.get(cntStage)][i+1]);      //選択肢
+        }
+        Answer = Choice.get(0);       //答え
 
-        /**
-         *  Choise配列のシャッフル
-         */
-        //配列からListへ変換
-        List<String> list = Arrays.asList(Choice);
-        //リストの並びをシャッフル
-        Collections.shuffle(list);
-        //Listから配列へ変換
-        Choice = (String[])list.toArray(new String[list.size()]);
+        //選択肢の並びをシャッフル
+        Collections.shuffle(Choice);
 
         //テキストに問題文と質問を配置
         TextView TextQuestion = (TextView) findViewById(R.id.textQuestion);
         TextQuestion.setText(questionTitle);
-        btChoice[0].setText(Choice[0]);
-        btChoice[1].setText(Choice[1]);
-        btChoice[2].setText(Choice[2]);
-        btChoice[3].setText(Choice[3]);
+        for(int i = 0; i < 4; i++) {
+            btChoice[i].setText(Choice.get(i));
+        }
 
         //ボタンの有効化
         for (int i = 0;i < 4;i++){
@@ -225,37 +236,7 @@ public class QuizActivity extends Activity {
         }
         else{
             Toast.makeText(this, "Quiz中は戻るボタン禁止です！！！！", Toast.LENGTH_SHORT).show();
-            //String TAG = getLocalClassName();
-            //Log.d(TAG, "押された");
             return false;
-        }
-    }
-
-    public void parse(Context context){
-        //AssetManagerの呼び出し
-        AssetManager assetManager = context.getResources().getAssets();
-        try{
-            //CSVファイルの読み込み
-            InputStream is = assetManager.open("quiz.csv");
-            //文字コード"SJIS"形式で読み込む(文字化け対策)
-            InputStreamReader inputStreamReader = new InputStreamReader(is,"SJIS");
-            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-            String line = "";
-            int i=0;
-            while ((line = bufferedReader.readLine())!=null){
-                //各行が","で区切られていて5つの項目
-                StringTokenizer st = new StringTokenizer(line, ",");
-                QuizText[i][0] = st.nextToken();
-                QuizText[i][1] = st.nextToken();
-                QuizText[i][2] = st.nextToken();
-                QuizText[i][3] = st.nextToken();
-                QuizText[i][4] = st.nextToken();
-                i++;
-            }
-            bufferedReader.close();
-        }catch (IOException e){
-            //例外処理
-            e.printStackTrace();
         }
     }
 
